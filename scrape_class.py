@@ -1,6 +1,10 @@
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
+import ssl
+
+# get ssl verification
+ssl._create_default_https_context = ssl._create_unverified_context
 
 class ScrapeClass():
     
@@ -23,7 +27,7 @@ class ScrapeClass():
 
         DatasetNum = self.NumberOfDataset
 
-        for Number in range(9015, 10000):
+        for Number in range(9017, 10000):
 
             print("============")
 
