@@ -2,55 +2,65 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 
-class scrape_class():
+class ScrapeClass():
     
     def __init__(self):
          
         # the dictionary to store the scraped data
-        self.data_dict = None
-        self.the_number_of_dataset = 522 + 65 + 659 + 250 + 529 + 662 + 16 + 1684 + 835 + 1755 + 997 + 833 + 95 + 2651 + 26 + 256 + 94 + 32391
+        self.DataDict = None
+        self.NumberOfDataset = 522 + 65 + 659 + 250 + 529 + 662 + 16 + 1684 + 835 + 1755 + 997 + 833 + 95 + 2651 + 26 + 256 + 94 + 32391
 
-    def get_the_number_of_dataset():
+    def GetTheNumberOfDataset():
         pass
 
-    def scrape_data(self):
+    def GetTheDownloadUrl():
+    	# should find a way if there is no CSV form
+    	pass
 
-        data_dict = {}
+    def ScrapeData(self):
 
-        dataset_num = self.the_number_of_dataset
+        DataDict = {}
 
-        for number in range(9001, dataset_num + 1):
+        DatasetNum = self.NumberOfDataset
+
+        for Number in range(9015, 10000):
 
             print("============")
 
 	        # the url of the webpage of the dataset
-            url = "https://data.gov.tw/dataset/" + str(number)
-            print(url)
+            Url = "https://data.gov.tw/dataset/" + str(Number)
+            print("url: ", Url)
 
 	        # connect the page
-            page = requests.get(url)
+            Page = requests.get(Url)
 
 	        # get the content of the page
-            soup = BeautifulSoup(page.content, 'html.parser')
+            Soup = BeautifulSoup(Page.content, 'html.parser')
 
 	        # get the title of the website
-            title = soup.find_all("h1", class_="node-title")[0].text
-            if title == "404":
+            Title = Soup.find_all("h1", class_="node-title")[0].text
+            if Title == "404":
         	    continue
 
-	        # get the download url
+            # get the download url (should try to fix it with GetTheDownloadUrl())
             try:
+                DownloadUrl = Soup.find_all("a", string="CSV")[0]['href']
+                print("csv_url: ", DownloadUrl)
+            except:
+            	continue
 
+            try:
 		        # start to get the data
-    	        download_url = soup.find_all("a", string="CSV")[0]['href']
-    	        print(download_url)
-    	        data = pd.read_csv(download_url)
-    	        print(len(data.index))
+    	        Data = pd.read_csv(DownloadUrl, nrows = 1)
+    	        print(Data)
+    	        print("row_num: ", len(Data.index))
 
             except Exception as e:
-    	        print(e)
+    	        print("error!!!!! :", e)
 
-            data_dict[title] = [len(data.index), data]
+            # DataDict[Title] = [len(Data.index), Data]
 
-        return data_dict
+            # print(data_dict)
+
+        return DataDict
 
