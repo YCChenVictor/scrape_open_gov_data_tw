@@ -8,6 +8,7 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import ssl
+from selenium import webdriver
 
 # get ssl verification
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -18,7 +19,24 @@ class ScrapeClass():
          
         # the dictionary to store the scraped data
         self.DataDict = None
+
+        # the number of the total gov dataset
         self.NumberOfDataset = 522 + 65 + 659 + 250 + 529 + 662 + 16 + 1684 + 835 + 1755 + 997 + 833 + 95 + 2651 + 26 + 256 + 94 + 32391
+
+        # the place to store the setting of chrome
+        self.driver = None
+
+    def SetUpChromeDriver(self, location):
+        options = webdriver.ChromeOptions()
+        options.add_experimental_option("prefs", 
+            {
+            "download.default_directory": location,
+            "download.prompt_for_download": False,
+            "download.directory_upgrade": True,
+            "safebrowsing.enabled": True
+            })
+        driver = webdriver.Chrome(chrome_options=options)
+        self.driver = driver
 
     def GetTheNumberOfDataset():
         pass
@@ -35,6 +53,8 @@ class ScrapeClass():
         pass
 
     def ScrapeData(self):
+
+        driver = self.driver
 
         DataDict = {}
 
@@ -73,9 +93,12 @@ class ScrapeClass():
 
             try:
 		        # start to get the data
+                '''
                 Data = pd.read_csv(DownloadUrl)
                 print(Data)
                 print("row_num: ", len(Data.index))
+                '''
+                driver.get(DownloadUrl)
 
             except:
             	print("no Data")
