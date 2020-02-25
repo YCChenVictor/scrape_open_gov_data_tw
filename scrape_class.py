@@ -1,3 +1,9 @@
+"""
+First, Scrape one database only (11549) and import it into SQL
+
+I want to make an auto update in SQL afterward
+"""
+
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -21,13 +27,20 @@ class ScrapeClass():
     	# should find a way if there is no CSV form
     	pass
 
+    def FindEncoding():
+    	# find a way to solve different Encoding problem
+    	pass
+
+    def ImportCSVintoSQL(self):
+        pass
+
     def ScrapeData(self):
 
         DataDict = {}
 
         DatasetNum = self.NumberOfDataset
 
-        for Number in range(9017, 10000):
+        for Number in range(11549, 11550):
 
             print("============")
 
@@ -42,25 +55,31 @@ class ScrapeClass():
             Soup = BeautifulSoup(Page.content, 'html.parser')
 
 	        # get the title of the website
-            Title = Soup.find_all("h1", class_="node-title")[0].text
-            if Title == "404":
-        	    continue
+            try:
+                Title = Soup.find_all("h1", class_="node-title")[0].text
+                if Title == "404":
+                    continue
+            except:
+                print("no title")
+                continue
 
             # get the download url (should try to fix it with GetTheDownloadUrl())
             try:
                 DownloadUrl = Soup.find_all("a", string="CSV")[0]['href']
                 print("csv_url: ", DownloadUrl)
             except:
-            	continue
+                print("no download url for csv")
+                continue
 
             try:
 		        # start to get the data
-    	        Data = pd.read_csv(DownloadUrl, nrows = 1)
-    	        print(Data)
-    	        print("row_num: ", len(Data.index))
+                Data = pd.read_csv(DownloadUrl)
+                print(Data)
+                print("row_num: ", len(Data.index))
 
-            except Exception as e:
-    	        print("error!!!!! :", e)
+            except:
+            	print("no Data")
+    	        continue
 
             # DataDict[Title] = [len(Data.index), Data]
 
