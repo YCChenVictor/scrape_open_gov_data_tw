@@ -9,11 +9,12 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import ssl
 from selenium import webdriver
+# from sqlalchemy import create_engine
 
 # get ssl verification
 ssl._create_default_https_context = ssl._create_unverified_context
 
-class ScrapeClass():
+class ScrapeOneData():
     
     def __init__(self):
          
@@ -28,17 +29,12 @@ class ScrapeClass():
 
     def SetUpChromeDriver(self, location):
         options = webdriver.ChromeOptions()
-        options.add_experimental_option("prefs", 
-            {
-            "download.default_directory": location,
-            "download.prompt_for_download": False,
-            "download.directory_upgrade": True,
-            "safebrowsing.enabled": True
-            })
-        driver = webdriver.Chrome(chrome_options=options)
+        # options.add_argument(location)
+        driver = webdriver.Chrome()
         self.driver = driver
 
     def GetTheNumberOfDataset():
+        # the way to find the total number of datasets
         pass
 
     def GetTheDownloadUrl():
@@ -49,64 +45,58 @@ class ScrapeClass():
     	# find a way to solve different Encoding problem
     	pass
 
-    def ImportCSVintoSQL(self):
-        pass
-
-    def ScrapeData(self):
+    def ScrapeTitleAndDownloadURL(self, Number):
 
         driver = self.driver
 
         DataDict = {}
 
-        DatasetNum = self.NumberOfDataset
+        # the url of the webpage of the dataset
+        Url = "https://data.gov.tw/dataset/" + str(Number)
+        # print("url: ", Url)
 
-        for Number in range(11549, 11550):
+        # connect the page
+        Page = requests.get(Url)
 
-            print("============")
+        # get the content of the page
+        Soup = BeautifulSoup(Page.content, 'html.parser')
 
-	        # the url of the webpage of the dataset
-            Url = "https://data.gov.tw/dataset/" + str(Number)
-            print("url: ", Url)
+        # get the title of the website
+        try:
+            Title = Soup.find_all("h1", class_="node-title")[0].text
+            if Title == "404":
+                pass
+        except:
+            print("no title")
+            pass
 
-	        # connect the page
-            Page = requests.get(Url)
+        # get the download url (should try to fix it with GetTheDownloadUrl())
+        try:
+            DownloadUrl = Soup.find_all("a", string="CSV")[0]['href']
+            print("csv_url: ", DownloadUrl)
+        except:
+            print("no download url for csv")
+            pass
 
-	        # get the content of the page
-            Soup = BeautifulSoup(Page.content, 'html.parser')
+        return [Title, DownloadUrl]
 
-	        # get the title of the website
-            try:
-                Title = Soup.find_all("h1", class_="node-title")[0].text
-                if Title == "404":
-                    continue
-            except:
-                print("no title")
-                continue
+    def ImportCSVintoSQL(self, title, password):
+        
+        print("Start to Load Data: " title)
 
-            # get the download url (should try to fix it with GetTheDownloadUrl())
-            try:
-                DownloadUrl = Soup.find_all("a", string="CSV")[0]['href']
-                print("csv_url: ", DownloadUrl)
-            except:
-                print("no download url for csv")
-                continue
+        database = title
+        host = '127.0.0.1'
+        user = 'root'
 
-            try:
-		        # start to get the data
-                '''
-                Data = pd.read_csv(DownloadUrl)
-                print(Data)
-                print("row_num: ", len(Data.index))
-                '''
-                driver.get(DownloadUrl)
+        try:
+        print("==========================")
+        print("loading data:", TARGET_NAMES[i], file_names[i])
 
-            except:
-            	print("no Data")
-    	        continue
+        # command of sql for importing data
+        sql = load_table(paths[i], TARGET_NAMES[i])
 
-            # DataDict[Title] = [len(Data.index), Data]
-
-            # print(data_dict)
-
-        return DataDict
-
+        # execute the MySQL command
+        python_mysql_command(host, user, password, database, sql,
+                            "Import Successfully")
+        except:
+            pass
