@@ -134,13 +134,23 @@ class MySQLWithPython(): # the function to do SQL command through python
                 connection.close()
                 print("MySQL connection is closed")
 
-    def AutoCheckDataType(csv_file): # To Create a table with MySQL, must know the datatype of all columns
-        '''
-        Should be StaticMethod
-        Datatypes:
-        '''
-        # check datatype
+    
+    def AutoCheckDataType(file):
 
+        colnames_datatype = {}
+
+        data = pd.read_csv(file)
+
+        colnames = data.columns.values
+        for colname in colnames:
+            col_data = data[colname]
+
+            datatypes = col_data.apply(type)
+            datatype = datatypes.describe().top.__name__
+
+            colnames_datatype[colname] = datatype
+
+        return colnames_datatype
 
 
 
