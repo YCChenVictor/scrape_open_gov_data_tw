@@ -134,10 +134,9 @@ class MySQLWithPython(): # the function to do SQL command through python
                 connection.close()
                 print("MySQL connection is closed")
 
-    
-    def AutoCheckDataType(file):
+    def DataTypeDFtoSQL(file):
 
-        colnames_datatype = {}
+        colnames_datatype = []
 
         data = pd.read_csv(file)
 
@@ -145,25 +144,47 @@ class MySQLWithPython(): # the function to do SQL command through python
         for colname in colnames:
             col_data = data[colname]
 
+            if colname == "Unnamed: 0":
+                colname = "id"
+
             datatypes = col_data.apply(type)
             datatype = datatypes.describe().top.__name__
 
-            colnames_datatype[colname] = datatype
+            if datatype == "int":
+                SQL_datatype = "INT"
+            elif datatype == "str":
+                SQL_datatype = "TEXT"
+            else:
+                print("there is another datatype!!!!!!")
+
+            colnames_datatype.append([colname, SQL_datatype])
 
         return colnames_datatype
 
+    def create_table(file, table_name, primary=True):
+        """
+        function for creating elements of table (ex: id INT AUTO)
+        """
+        colnames_datatype = DataTypeDFtoSQL(file)
 
+        elements = []
+        for i in range(len(colnames_datatype)):
+            colname_datatype = colnames_datatype[i]
+            elements.append(" ".join(colname_datatype))
 
-    def CreateTable(self, path, table_name):
+        if primary:
+            elements.append("PRIMARY KEY (id)")
+        else:
+            pass
 
-        # obtain the column name
-        table = pd.read_csv(path, index_col=0)
-        colnames = table.columns.tolist()
-        colnames.insert(0, "id")
-        
-        # create a table in DataBase with the col names
-        
+        table_elements = "(" + ",".join(elements) + ")"
 
+        command = " ".join(["CREATE TABLE", table_elements])
+        command = command + ";"
+
+        return(command)
+
+    
     def LoadTable(self, path, table_name):
 
         host = self.host
