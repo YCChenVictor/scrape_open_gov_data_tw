@@ -1,15 +1,26 @@
-from scrape_class import ScrapeClass
-from functions.f_about_path import parent_path
+from functions.scrape_class import ScrapeOneData, MySQLWithPython
+# from functions.f_about_path import parent_path
 import os
-
-# this file path
-file_path = os.path.dirname(os.path.abspath(__file__))
-file_path_parent = parent_path(file_path, 1)
-
-# find path for csv file downloading
-csv_file_path = file_path_parent + "/csv_file"
+from docs.identity import password, location, database, host, user
 
 # scrape the title and the file url
-test = ScrapeClass()
-test.SetUpChromeDriver(csv_file_path)
-test.ScrapeData()
+test = ScrapeOneData()
+title, url = test.ScrapeTitleAndDownloadURL(11549)
+test.DownloadCSVFile(title, url, location)
+
+# MySQL command
+print("loading data: ", title, " into", " gov")
+MySQL_EXE = MySQLWithPython(host, user, password, database)
+
+# execute the MySQL command
+
+# create table accroding to csv titles
+file_path = location + title + ".csv"
+marks = [" ", ">"]
+title = MySQL_EXE.TableName(title) # No special character in table name
+
+sqlcommand = MySQL_EXE.CreateTable(file_path, title)
+MySQL_EXE.MysqlCommand(sqlcommand)
+
+# load the csv table into DataBase
+# sqlcommand.LoadTable(path, table_name)

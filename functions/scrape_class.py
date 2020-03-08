@@ -68,7 +68,7 @@ class ScrapeOneData():
         # get the download url (should try to fix it with GetTheDownloadUrl())
         try:
             DownloadUrl = Soup.find_all("a", string="CSV")[0]['href']
-            print("csv_url: ", DownloadUrl)
+            # print("csv_url: ", DownloadUrl)
         except:
             print("no download url for csv")
             pass
@@ -97,7 +97,16 @@ class MySQLWithPython(): # the function to do SQL command through python
         self.password = password
         self.database = database
 
-    def MysqlCommand(self, host, user, password, database, sql):
+    def MysqlCommand(self, sql):
+
+        host = self.host
+        user = self.user
+        password = self.password
+        database = self.database
+
+        # print("the sql command~~~: ", sql)
+        # print("===========================")
+
         # sql: the command want to do in sql
         # return: completion of the sql command
         try:
@@ -134,6 +143,7 @@ class MySQLWithPython(): # the function to do SQL command through python
                 connection.close()
                 print("MySQL connection is closed")
 
+    @staticmethod
     def DataTypeDFtoSQL(file):
 
         colnames_datatype = []
@@ -161,11 +171,25 @@ class MySQLWithPython(): # the function to do SQL command through python
 
         return colnames_datatype
 
-    def create_table(file, table_name, primary=True):
+    @staticmethod
+    def TableName(name):
+  
+        # replace all marks except for space
+        marks = [">", "<"]      
+        for mark in marks:
+            name = name.replace(mark, "")
+
+        # replace space into _
+        name = name.replace(" ", "_")
+
+        return name
+
+
+    def CreateTable(self, file, table_name, primary=True):
         """
         function for creating elements of table (ex: id INT AUTO)
         """
-        colnames_datatype = DataTypeDFtoSQL(file)
+        colnames_datatype = self.DataTypeDFtoSQL(file)
 
         elements = []
         for i in range(len(colnames_datatype)):
@@ -179,12 +203,13 @@ class MySQLWithPython(): # the function to do SQL command through python
 
         table_elements = "(" + ",".join(elements) + ")"
 
-        command = " ".join(["CREATE TABLE", table_elements])
+        command = " ".join(["CREATE TABLE", table_name ,table_elements])
         command = command + ";"
+
+        print(command)
 
         return(command)
 
-    
     def LoadTable(self, path, table_name):
 
         host = self.host
