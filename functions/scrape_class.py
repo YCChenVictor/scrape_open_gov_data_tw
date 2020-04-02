@@ -1,16 +1,13 @@
-"""
-First, Scrape one database only (11549) and import it into SQL
-
-I want to make an auto update in SQL afterward
-"""
-
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import ssl
 import mysql.connector
-# from selenium import webdriver
-# from sqlalchemy import create_engine
+import shutil
+import time
+from docs.identity import config, location
+import traceback
+import io
 
 # get ssl verification
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -60,16 +57,18 @@ class ScrapeOneData():
         try:
             Title = Soup.find_all("h1", class_="node-title")[0].text
             if Title == "404":
-                pass
+                print("no website")
+            else:
+                print("Title: ", title)
         except:
-            print("no title")
             pass
 
         # get the download url (should try to fix it with GetTheDownloadUrl())
         try:
             DownloadUrl = Soup.find_all("a", string="CSV")[0]['href']
-            # print("csv_url: ", DownloadUrl)
+            print("found csv_url: ", DownloadUrl)
         except:
+            DownloadUrl = None
             print("no download url for csv")
             pass
 
@@ -85,37 +84,43 @@ class ScrapeOneData():
 
         return data
 
+    def GetContentFromCSVUrl(self, url):
+
+        try:
+            url_content = requests.get(url).content
+            csv = pd.read_csv(io.StringIO(url_content.decode('utf-8')))
+            # check the number data is above 10000 or not
+            if len(csv.index) < 10000:
+                print("the number of data is too few, length: ", len(csv.index))
+                return
+            else:
+                self.DownloadCSVFile(title, url, location)
+        except Exception as e:
+            print(e)
+            print("Let me sleep for 5 seconds")
+            print("ZZzzzz...")
+            time.sleep(5)
+            print("Was a nice sleep, now let me continue...")
+            pass
+
+        return len(csv.index)
+
 
 class MySQLWithPython(): # the function to do SQL command through python
 
-    def __init__(self, host, user, password, database):
-        # host: the web host
-        self.host = host
-        # user: the user name
-        self.user = user
-        # password: the password of loacl MySQL DataBase
-        self.password = password
-        self.database = database
+    def __init__(self, config, location):
 
-    def MysqlCommand(self, sql):
+        self.config = config
+        self.location = location
 
-        host = self.host
-        user = self.user
-        password = self.password
-        database = self.database
+    def ExecuteMysqlCommand(self, sqlcommands):
 
-        # print("the sql command~~~: ", sql)
-        # print("===========================")
+        config = self.config
+        location = self.location
 
-        # sql: the command want to do in sql
-        # return: completion of the sql command
         try:
             # connect to database
-            connection = mysql.connector.connect(host=host,
-                                                 user=user,
-                                                 password=password,
-                                                 database=database
-                                                 )
+            connection = mysql.connector.connect(**config)
 
             # check whether connected
             if connection.is_connected():
@@ -130,12 +135,14 @@ class MySQLWithPython(): # the function to do SQL command through python
             cursor = connection.cursor()
 
             # execute the sql command:
-            cursor.execute(sql)
-            print('Succuessfully execute MySQL Command')
+            for sqlcommand in sqlcommands:
+                cursor.execute(sqlcommand)
+                connection.commit()
+                print('Succuessfully execute MySQL Command: ', sqlcommand)
 
         except mysql.connector.Error as error:
             # if error arouses during the try, print out the error
-            print("Failed to create table in MySQL: {}".format(error))
+            print("Failed in MySQL: {}".format(error))
         
         finally:
             if (connection.is_connected()):
@@ -143,19 +150,22 @@ class MySQLWithPython(): # the function to do SQL command through python
                 connection.close()
                 print("MySQL connection is closed")
 
-    @staticmethod
-    def DataTypeDFtoSQL(file):
+    def DataTypeDFtoSQL(self, file):
 
         colnames_datatype = []
 
         data = pd.read_csv(file)
 
         colnames = data.columns.values
+
         for colname in colnames:
+
             col_data = data[colname]
 
             if colname == "Unnamed: 0":
                 colname = "id"
+
+            colname = self.NameForSQL(colname)
 
             datatypes = col_data.apply(type)
             datatype = datatypes.describe().top.__name__
@@ -164,6 +174,8 @@ class MySQLWithPython(): # the function to do SQL command through python
                 SQL_datatype = "INT"
             elif datatype == "str":
                 SQL_datatype = "TEXT"
+            elif datatype == "float":
+                SQL_datatype = "DECIMAL"
             else:
                 print("there is another datatype!!!!!!")
 
@@ -171,8 +183,7 @@ class MySQLWithPython(): # the function to do SQL command through python
 
         return colnames_datatype
 
-    @staticmethod
-    def TableName(name):
+    def NameForSQL(self, name):
   
         # replace all marks except for space
         marks = [">", "<"]      
@@ -184,8 +195,7 @@ class MySQLWithPython(): # the function to do SQL command through python
 
         return name
 
-
-    def CreateTable(self, file, table_name, primary=True):
+    def CommandCreateTable(self, file, table_name, primary=True):
         """
         function for creating elements of table (ex: id INT AUTO)
         """
@@ -206,22 +216,45 @@ class MySQLWithPython(): # the function to do SQL command through python
         command = " ".join(["CREATE TABLE", table_name ,table_elements])
         command = command + ";"
 
-        print(command)
+        return([command])
 
-        return(command)
+    def CommandLoadTable(self, file, table_name):
 
-    def LoadTable(self, path, table_name):
+        # sql command for loading data
+        command = ("LOAD DATA INFILE \'{path}\'" +
+                   " INTO TABLE {table_name}" +
+                   " FIELDS TERMINATED BY ','" +
+                   " ENCLOSED BY '\"'" +
+                   " LINES TERMINATED BY '\\n'" +
+                   " IGNORE 1 ROWS;").format(path=file, table_name=table_name)
 
-        host = self.host
-        user = self.user
-        password = self.password
-        database = self.database
+        return ([command])
 
-        sql = ("LOAD DATA INFILE \'{path}\'" +
-               " INTO TABLE {table_name}" +
-               " FIELDS TERMINATED BY ','" +
-               " ENCLOSED BY '\"'" +
-               " LINES TERMINATED BY '\\n'" +
-               " IGNORE 1 ROWS;").format(path=path, table_name=table_name)
+    def CreateLoadTable(self, title):
 
-        self.MysqlCommand(host, user, password, database, sql)
+        try:
+            # MySQL command
+            print("====================")
+            print("loading data: ", title, " into", " gov")  
+
+            # execute the MySQL command    
+
+            # get the file path
+            file_path = location + title + ".csv"  
+
+            # create table accroding to csv titles
+            print("====================")
+            print("creating table~~~~~")
+            title_for_sql = self.NameForSQL(title) # No special character in table name
+            sqlcommands = self.CommandCreateTable(file_path, title_for_sql)
+            self.ExecuteMysqlCommand(sqlcommands)    
+
+            # load the csv table into DataBase
+            print("==================")
+            print("loading table~~~~~")
+            sqlcommands = self.CommandLoadTable(file_path, title_for_sql)
+            self.ExecuteMysqlCommand(sqlcommands)
+
+        except Exception as e:
+            traceback.print_exc()
+            pass

@@ -3,63 +3,51 @@ import os
 from docs.identity import config, location
 import pandas as pd
 import time
+import requests
+import io
+import traceback
+import json
 
 """
-5943有資料，可是沒有下載下來
+從5945開始有資料
+5950有資料，可是沒有下載下來 (中華郵政全國營業據點)
+5951, 5952 .zip 目前無法下載，根本就進不去
 
 522 + 65 + 659 + 250 + 529 + 662 + 16 + 1684 + 835 + 1755 + 997 + 833 + 95 + 2651 + 26 + 256 + 94 + 32391
+
+想辦法放到external hard disk裡
 """
 
-for i in range(5943, 5944):
-    
+for i in range(5945, 522 + 65 + 659 + 250 + 529 + 662 + 16 + 1684 + 835 + 1755 + 997 + 833 + 95 + 2651 + 26 + 256 + 94 + 32391):
+
+    print("================================")
+    print("downloading dataset: ", i)    
+
+    # scrape the title and the file url with data over 10000
+    Scrape = ScrapeOneData()
     try:
+        title, url = Scrape.ScrapeTitleAndDownloadURL(i)
+        print("trying to scrape, ",title, "url: ", url)
+    except KeyboardInterrupt:
+        stored_exception=sys.exc_info()    
 
-        print("================================")
-        print("downloading dataset: ", i)    
+    if url is None:
+    	continue
+    else:
+        # get the content from csv url
+        csv_length = Scrape.GetContentFromCSVUrl(url)
 
-        # scrape the title and the file url with data over 10000
-        test = ScrapeOneData()
-        try:
-            title, url = test.ScrapeTitleAndDownloadURL(i)
-        except KeyboardInterrupt:
-            stored_exception=sys.exc_info()    
+        # create and load table
+        SQL = MySQLWithPython(config, location)
+        SQL.CreateLoadTable(title)
 
-        # check the number data is above 10000 or not
-        if url is None:
-        	continue
-        if len(pd.read_csv(url).index) < 10000:
-            print("the number of data is too few")
-            continue    
+    # record
+    with open('./docs/records.json', 'r') as read_file:
+        dict_data = json.load(read_file)
 
-        test.DownloadCSVFile(title, url, location)    
+    data = {'title': title, 'csv_url': url, 'num_of_data': csv_length}
+    dict_data[i] = data
 
-        # the file path
-        file_path = location + title + ".csv"    
+    with open('./docs/records.json', 'w') as f:
+        json.dump(dict_data, f)
 
-        # MySQL command
-        print("loading data: ", title, " into", " gov")
-        MySQL_EXE = MySQLWithPython(config, location)    
-
-        # execute the MySQL command    
-
-        # create table accroding to csv titles
-        print("====================")
-        print("creating table~~~~~")
-        title_for_sql = MySQL_EXE.TableName(title) # No special character in table name
-        sqlcommands = MySQL_EXE.CommandCreateTable(file_path, title_for_sql)
-        MySQL_EXE.ExecuteMysqlCommand(sqlcommands)    
-
-        # load the csv table into DataBase
-        print("==================")
-        print("loading table~~~~~")
-        sqlcommands = MySQL_EXE.CommandLoadTable(file_path, title_for_sql)
-        MySQL_EXE.ExecuteMysqlCommand(sqlcommands)
-
-    except:
-
-        print("Connection refused by the server..")
-        print("Let me sleep for 5 seconds")
-        print("ZZzzzz...")
-        time.sleep(5)
-        print("Was a nice sleep, now let me continue...")
-        continue
