@@ -25,6 +25,21 @@ class ScrapeOneData():
         # the number of the total gov dataset
         self.NumberOfDataset = 522 + 65 + 659 + 250 + 529 + 662 + 16 + 1684 + 835 + 1755 + 997 + 833 + 95 + 2651 + 26 + 256 + 94 + 32391
 
+        # the place to save the length of csv file
+        self.length = None
+
+        # check whether to get the csv content
+        self.GetTheContent = False
+
+        # check whether to get the title of website
+        self.title = None
+
+        # check whether to get the csv_url of website
+        self.csv_url = None
+
+        # the minimum number of data 
+        self.minimum = 1000
+
     def GetTheNumberOfDataset():
         # the way to find the total number of datasets
         pass
@@ -48,7 +63,7 @@ class ScrapeOneData():
         # print("url: ", Url)
 
         # connect the page
-        Page = requests.get(Url)
+        Page = requests.get(Url, verify=False)
 
         # get the content of the page
         Soup = BeautifulSoup(Page.content, 'html.parser')
@@ -58,53 +73,40 @@ class ScrapeOneData():
             Title = Soup.find_all("h1", class_="node-title")[0].text
             if Title == "404":
                 print("no website")
+                return
             else:
-                print("Title: ", title)
-        except:
+                print("Title: ", Title)
+                self.title = Title
+        except Exception as e:
+            print("error during getting title: ", e)
             pass
 
         # get the download url (should try to fix it with GetTheDownloadUrl())
         try:
-            DownloadUrl = Soup.find_all("a", string="CSV")[0]['href']
-            print("found csv_url: ", DownloadUrl)
-        except:
-            DownloadUrl = None
-            print("no download url for csv")
+            csv_url = Soup.find_all("a", string="CSV")[0]['href']
+            print("found csv_url: ", csv_url)
+            self.csv_url = csv_url
+        except Exception as e:
+            print("error during getting csv_url: ", e)
             pass
-
-        return [Title, DownloadUrl]
-
-    def DownloadCSVFile(self, Title, DownloadUrl, location):
-
-        data = pd.read_csv(DownloadUrl)
-
-        data.to_csv(location + Title + ".csv")
-
-        # print(type(data))
-
-        return data
 
     def GetContentFromCSVUrl(self, url):
 
+        url_content = requests.get(url, verify=False).content
         try:
-            url_content = requests.get(url).content
-            csv = pd.read_csv(io.StringIO(url_content.decode('utf-8')))
-            # check the number data is above 10000 or not
-            if len(csv.index) < 10000:
-                print("the number of data is too few, length: ", len(csv.index))
-                return
-            else:
-                self.DownloadCSVFile(title, url, location)
-        except Exception as e:
-            print(e)
-            print("Let me sleep for 5 seconds")
-            print("ZZzzzz...")
-            time.sleep(5)
-            print("Was a nice sleep, now let me continue...")
-            pass
+            excel = pd.read_csv(io.StringIO(url_content.decode('utf-8', 'ignore')), error_bad_lines=False)
+        except:
+            excel = pd.read_excel(io.StringIO(url_content.decode('utf-8', 'ignore')), error_bad_lines=False)
+        length = len(excel.index)
+        self.length = length
 
-        return len(csv.index)
-
+        # check the number data is above 10000 or not
+        if len(excel.index) < self.minimum:
+            print("the number of data is too few, length: ", len(excel.index))
+            return
+        else:
+            excel.to_csv(location + self.title + ".csv")
+            self.GetTheContent = True
 
 class MySQLWithPython(): # the function to do SQL command through python
 
@@ -232,29 +234,24 @@ class MySQLWithPython(): # the function to do SQL command through python
 
     def CreateLoadTable(self, title):
 
-        try:
-            # MySQL command
-            print("====================")
-            print("loading data: ", title, " into", " gov")  
+        # MySQL command
+        print("====================")
+        print("loading data: ", title, " into", " gov")  
 
-            # execute the MySQL command    
+        # execute the MySQL command    
 
-            # get the file path
-            file_path = location + title + ".csv"  
+        # get the file path
+        file_path = location + title + ".csv"  
 
-            # create table accroding to csv titles
-            print("====================")
-            print("creating table~~~~~")
-            title_for_sql = self.NameForSQL(title) # No special character in table name
-            sqlcommands = self.CommandCreateTable(file_path, title_for_sql)
-            self.ExecuteMysqlCommand(sqlcommands)    
+        # create table accroding to csv titles
+        print("====================")
+        print("creating table~~~~~")
+        title_for_sql = self.NameForSQL(title) # No special character in table name
+        sqlcommands = self.CommandCreateTable(file_path, title_for_sql)
+        self.ExecuteMysqlCommand(sqlcommands)    
 
-            # load the csv table into DataBase
-            print("==================")
-            print("loading table~~~~~")
-            sqlcommands = self.CommandLoadTable(file_path, title_for_sql)
-            self.ExecuteMysqlCommand(sqlcommands)
-
-        except Exception as e:
-            traceback.print_exc()
-            pass
+        # load the csv table into DataBase
+        print("==================")
+        print("loading table~~~~~")
+        sqlcommands = self.CommandLoadTable(file_path, title_for_sql)
+        self.ExecuteMysqlCommand(sqlcommands)
