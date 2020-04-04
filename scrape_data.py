@@ -9,13 +9,13 @@ import traceback
 import pickle
 
 """
-從5945開始有資料
-5950有資料，可是沒有下載下來 (中華郵政全國營業據點)
-5951, 5952 .zip 目前無法下載，根本就進不去
-沒有解決：unsupported operand type(s) for <<: 'str' and 'int'
+從 5945 開始有資料
+5950 (中華郵政全國營業據點)因為有特殊符號，沒有存進SQL
+5951, 5952 因為.zip 目前無法下載，根本就進不去網頁
+5996 的 SQL error 是因為太多 Empty 在同一個 column，導致給錯 type，這是可以解決的，在一開始決定 type 的時候
 
-522 + 65 + 659 + 250 + 529 + 662 + 16 + 1684 + 835 + 1755 + 997 + 833 + 95 + 2651 + 26 + 256 + 94 + 32391
-
+'error_during_csv_content': unsupported operand type(s) for <<: 'str' and 'int'(沒有解決)
+因為實在太多 datatype error，唯一的辦法可能就是先全部都設為 TEXT，不過這個方法可以等到第二回scraping的時候
 想辦法放到external hard disk裡
 """
 
@@ -25,7 +25,9 @@ with open('./docs/record.pickle', 'wb') as handle:
     pickle.dump(dict_data, handle, protocol=pickle.HIGHEST_PROTOCOL)
 '''
 
-for i in range(5977, 522 + 65 + 659 + 250 + 529 + 662 + 16 + 1684 + 835 + 1755 + 997 + 833 + 95 + 2651 + 26 + 256 + 94 + 32391):
+all_num = 522 + 65 + 659 + 250 + 529 + 662 + 16 + 1684 + 835 + 1755 + 997 + 833 + 95 + 2651 + 26 + 256 + 94 + 32391
+
+for i in range(5996, all_num):
 
     print("================================")
     print("downloading dataset: ", i)    
@@ -65,7 +67,8 @@ for i in range(5977, 522 + 65 + 659 + 250 + 529 + 662 + 16 + 1684 + 835 + 1755 +
         if Scrape.GetTheContent:
             try:
                 SQL = MySQLWithPython(config, location)
-                SQL.CreateLoadTable(title)
+                SQL.whether_choose_datatype = False
+                SQL.CreateLoadTable(Scrape.title)
             except Exception as e_during_SQL_command:
                 data["error_during_SQL_command"] = e_during_SQL_command
                 traceback.print_exc()

@@ -113,7 +113,14 @@ class MySQLWithPython(): # the function to do SQL command through python
     def __init__(self, config, location):
 
         self.config = config
+
         self.location = location
+
+        # whether to choose datatype of SQL
+        self.whether_choose_datatype = False
+
+        # whether to SKIP All Error
+        self.whether_SKIP_all_error = False
 
     def ExecuteMysqlCommand(self, sqlcommands):
 
@@ -160,9 +167,11 @@ class MySQLWithPython(): # the function to do SQL command through python
 
         colnames = data.columns.values
 
+        # determine the datatype of SQL (net of empty)
         for colname in colnames:
 
             col_data = data[colname]
+            col_data = col_data.dropna()
 
             if colname == "Unnamed: 0":
                 colname = "id"
@@ -172,7 +181,12 @@ class MySQLWithPython(): # the function to do SQL command through python
             datatypes = col_data.apply(type)
             datatype = datatypes.describe().top.__name__
 
-            if datatype == "int":
+            if colname == "id":
+                SQL_datatype = "INT"
+            elif not self.whether_choose_datatype:
+                SQL_datatype = "TEXT"
+                print("Specify SQL datatype to TEXT anyway")
+            elif datatype == "int":
                 SQL_datatype = "INT"
             elif datatype == "str":
                 SQL_datatype = "TEXT"
@@ -197,10 +211,51 @@ class MySQLWithPython(): # the function to do SQL command through python
 
         return name
 
+    def CommandDealWithEmptyToNULL(self, file):
+        """
+        function to create command to deal with Empty value and all to create table
+        """
+        data = pd.read_csv(file)
+        colnames = data.columns.values
+
+        # create null command
+        nullif_statements = []
+        i = 0
+        for colname in colnames:
+            
+            i += 1
+
+            if colname == "Unnamed: 0":
+                colname = "id"
+
+            nullif_statement = colname + " = NULLIF(@col" + str(i) + ",'')"
+            nullif_statements.append(nullif_statement)
+
+        nullif_command = ",".join(nullif_statements)
+        nullif_command = " ".join(["SET", nullif_command])
+
+        # create @ statement
+        at_col_statements = []
+        for i in range(len(colnames)):
+            
+            i += 1
+
+            at_col_statement = "@col" + str(i)
+            at_col_statements.append(at_col_statement)
+
+        at_col_command = ",".join(at_col_statements)
+        at_col_command = "(" + at_col_command + ")"
+
+        # full statement
+        full_command = " ".join([at_col_command, nullif_command])
+
+        return full_command
+
     def CommandCreateTable(self, file, table_name, primary=True):
         """
         function for creating elements of table (ex: id INT AUTO)
         """
+
         colnames_datatype = self.DataTypeDFtoSQL(file)
 
         elements = []
@@ -222,13 +277,29 @@ class MySQLWithPython(): # the function to do SQL command through python
 
     def CommandLoadTable(self, file, table_name):
 
-        # sql command for loading data
-        command = ("LOAD DATA INFILE \'{path}\'" +
-                   " INTO TABLE {table_name}" +
-                   " FIELDS TERMINATED BY ','" +
-                   " ENCLOSED BY '\"'" +
-                   " LINES TERMINATED BY '\\n'" +
-                   " IGNORE 1 ROWS;").format(path=file, table_name=table_name)
+        # sql command to deal with Empty to NULL
+        empty_to_null = self.CommandDealWithEmptyToNULL(file)
+
+        if self.whether_SKIP_all_error:
+            command = ("LOAD DATA INFILE \'{path}\'" +
+                       "SKIP ALL ERRORS" +
+                       " INTO TABLE {table_name}" +
+                       " FIELDS TERMINATED BY ','" +
+                       " ENCLOSED BY '\"'" +
+                       " LINES TERMINATED BY '\\n'" +
+                       " IGNORE 1 ROWS" +
+                       empty_to_null +
+                       ";").format(path=file, table_name=table_name)
+        else:
+            # sql command for loading data
+            command = ("LOAD DATA INFILE \'{path}\'" +
+                       " INTO TABLE {table_name}" +
+                       " FIELDS TERMINATED BY ','" +
+                       " ENCLOSED BY '\"'" +
+                       " LINES TERMINATED BY '\\n'" +
+                       " IGNORE 1 ROWS" +
+                       empty_to_null +
+                       ";").format(path=file, table_name=table_name)
 
         return ([command])
 
