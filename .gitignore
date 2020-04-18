@@ -113,3 +113,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# others
+.DS_Store
+csv_files/
+docs/
+筆記.txt
