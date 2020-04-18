@@ -2,7 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import ssl
-import mysql.connector
+import mysql.connector # pip install mysql-connector
 import shutil
 import time
 from docs.identity import config, location
@@ -202,7 +202,7 @@ class MySQLWithPython(): # the function to do SQL command through python
     def NameForSQL(self, name):
   
         # replace all marks except for space
-        marks = [">", "<"]      
+        marks = [">", "<", "/", "(", ")"]      
         for mark in marks:
             name = name.replace(mark, "")
 
@@ -227,6 +227,8 @@ class MySQLWithPython(): # the function to do SQL command through python
 
             if colname == "Unnamed: 0":
                 colname = "id"
+
+            colname = self.NameForSQL(colname)
 
             nullif_statement = colname + " = NULLIF(@col" + str(i) + ",'')"
             nullif_statements.append(nullif_statement)
