@@ -16,7 +16,7 @@ with open('./docs/record.pickle', 'wb') as handle:
 
 all_num = 522 + 65 + 659 + 250 + 529 + 662 + 16 + 1684 + 835 + 1755 + 997 + 833 + 95 + 2651 + 26 + 256 + 94 + 32391
 
-for i in range(5998, all_num):
+for i in range(22779, all_num):
 
     print("================================")
     print("downloading dataset: ", i)

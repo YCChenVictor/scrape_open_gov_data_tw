@@ -283,7 +283,7 @@ class MySQLWithPython(): # the function to do SQL command through python
         empty_to_null = self.CommandDealWithEmptyToNULL(file)
 
         if self.whether_SKIP_all_error:
-            command = ("LOAD DATA INFILE \'{path}\'" +
+            command = ("LOAD DATA INFILE '{path}\'" +
                        "SKIP ALL ERRORS" +
                        " INTO TABLE {table_name}" +
                        " FIELDS TERMINATED BY ','" +
@@ -294,7 +294,7 @@ class MySQLWithPython(): # the function to do SQL command through python
                        ";").format(path=file, table_name=table_name)
         else:
             # sql command for loading data
-            command = ("LOAD DATA INFILE \'{path}\'" +
+            command = ("LOAD DATA INFILE '{path}\'" +
                        " INTO TABLE {table_name}" +
                        " FIELDS TERMINATED BY ','" +
                        " ENCLOSED BY '\"'" +
@@ -302,6 +302,7 @@ class MySQLWithPython(): # the function to do SQL command through python
                        " IGNORE 1 ROWS" +
                        empty_to_null +
                        ";").format(path=file, table_name=table_name)
+        print(command)
 
         return ([command])
 
@@ -327,4 +328,5 @@ class MySQLWithPython(): # the function to do SQL command through python
         print("==================")
         print("loading table~~~~~")
         sqlcommands = self.CommandLoadTable(file_path, title_for_sql)
+        print(sqlcommands)
         self.ExecuteMysqlCommand(sqlcommands)
