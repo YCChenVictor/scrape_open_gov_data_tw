@@ -8,6 +8,13 @@ import time
 from docs.identity import config, location
 import traceback
 import io
+import backoff
+
+'''
+無法解決：
+1. (5950)ConnectionError(ProtocolError('Connection aborted.', OSError("(54, 'ECONNRESET')")))
+2. (5951)ConnectionError(MaxRetryError('None: Max retries exceeded with url: /opencms/files/openData/04.zip (Caused by None)
+'''
 
 # get ssl verification
 ssl._create_default_https_context = ssl._create_unverified_context
@@ -52,6 +59,12 @@ class ScrapeOneData():
     	# find a way to solve different Encoding problem
     	pass
 
+    @backoff.on_exception(backoff.expo,
+                      requests.exceptions.RequestException,
+                      max_time=60)
+    def get_url(self, url):
+        return requests.get(url, verify=False)
+
     def ScrapeTitleAndDownloadURL(self, Number):
 
         driver = self.driver
@@ -63,7 +76,7 @@ class ScrapeOneData():
         # print("url: ", Url)
 
         # connect the page
-        Page = requests.get(Url, verify=False)
+        Page = self.get_url(Url)
 
         # get the content of the page
         Soup = BeautifulSoup(Page.content, 'html.parser')
@@ -92,11 +105,12 @@ class ScrapeOneData():
 
     def GetContentFromCSVUrl(self, url):
 
-        url_content = requests.get(url, verify=False).content
+        # csv file
+        url_content = self.get_url(url).content
         try:
-            excel = pd.read_csv(io.StringIO(url_content.decode('utf-8', 'ignore')), error_bad_lines=False)
-        except:
             excel = pd.read_excel(io.StringIO(url_content.decode('utf-8', 'ignore')), error_bad_lines=False)
+        except:
+            excel = pd.read_csv(io.StringIO(url_content.decode('utf-8', 'ignore')), error_bad_lines=False)
         length = len(excel.index)
         self.length = length
 

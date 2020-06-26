@@ -2,7 +2,6 @@ import pickle
 import pprint
 
 # read
-
 with open('./docs/record.pickle', 'rb') as handle:
     dict_data = pickle.load(handle)
 
